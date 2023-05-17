@@ -7,6 +7,16 @@ Requires python >= 3.8
 ```bash
 curl http://127.0.0.1:8080/predictions/bert -T input.txt
 ```
+
+## For this fork 
+
+Custom Docker building with for [mmdetection](https://github.com/open-mmlab/mmdetection/)/[mmcv](https://github.com/open-mmlab/mmcv.git) handler 
+
+- [`Dockerfile.custom`](./docker/Dockerfile.custom)
+- [`build_image-custom.sh`](./docker/build_image-custom.sh)
+
+- Building done on MacOS; Docker image & Docker host: Ubuntu 
+
 ### 🚀 Quick start with TorchServe
 
 ```

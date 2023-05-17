@@ -1,0 +1,81 @@
+FROM pytorch/pytorch:1.13.1-cuda11.6-cudnn8-devel
+ENV PYTHONUNBUFFERED TRUE
+
+RUN apt-get update --fix-missing && \
+    apt-get install software-properties-common -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+        ca-certificates \
+        g++ \
+        openjdk-17-jdk \
+        curl \
+        git \
+        build-essential \
+        sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install -U pip setuptools
+
+# This is only useful for cuda env
+RUN export USE_CUDA=1
+
+WORKDIR /repos/
+RUN chmod -R 777 /repos/
+
+RUN git clone --depth 1 https://github.com/pytorch/serve.git
+WORKDIR /repos/serve
+COPY torch_cu116_linux.txt ./requirements/torch_cu116_linux.txt
+RUN python3 ./ts_scripts/install_dependencies.py --cuda cu116
+
+# Make sure latest version of torchserve is uploaded before running this
+RUN python3 -m pip install --no-cache-dir torchserve torch-model-archiver torch-workflow-archiver
+
+# WORKDIR /repos/
+# RUN git clone https://github.com/open-mmlab/mmcv.git 
+# WORKDIR /repos/mmcv
+# RUN git checkout v1.6.0 
+# ENV FORCE_CUDA="1"
+# RUN MMCV_WITH_OPS=1 MAKEFLAGS="-j12" python3 -m pip install --no-cache-dir .
+
+# fix for cpp_extension.py arch_list[-1] += '+PTX' IndexError
+ARG TORCH_CUDA_ARCH_LIST="5.2 6.0 6.1 7.0 7.5 8.0 8.6+PTX"
+# fix for wrong nvcc error: https://github.com/microsoft/DeepSpeed/issues/2684#issuecomment-1379666816
+ENV PATH=/usr/local/cuda/bin:$PATH 
+RUN FORCE_CUDA="1" MMCV_WITH_OPS=1 MAKEFLAGS="-j12" python3 -m pip install mmcv-full==1.6.0 -f https://download.openmmlab.com/mmcv/dist/cu116/torch1.13/index.html
+
+WORKDIR /repos/
+RUN git clone https://github.com/open-mmlab/mmdetection.git 
+WORKDIR /repos/mmdetection
+RUN git checkout v2.25.0
+ENV FORCE_CUDA="1"
+RUN python3 -m pip install --no-cache-dir -r requirements/build.txt
+RUN python3 -m pip install --no-cache-dir .
+
+WORKDIR /repos/
+RUN git clone https://github.com/open-mmlab/mmengine.git
+WORKDIR /repos/mmengine
+RUN git checkout d76bfc965808785015e8b664e933f33c52ba7215
+RUN python3 -m pip install --no-cache-dir .
+
+RUN python3 -m pip install --no-cache-dir captum 
+
+RUN useradd -m model-server -p password
+
+COPY dockerd-entrypoint.sh /usr/local/bin/dockerd-entrypoint.sh
+
+RUN chmod +x /usr/local/bin/dockerd-entrypoint.sh \
+    && chown -R model-server /home/model-server
+
+COPY config.properties /home/model-server/config.properties
+RUN mkdir /home/model-server/model-store && chown -R model-server /home/model-server/model-store
+
+EXPOSE 8080 8081 8082 7070 7071
+
+WORKDIR /home/
+# allow writes to the home directory
+RUN chmod 777 /home
+RUN mkdir -p /home/mpl/
+ENV MPLCONFIGDIR=/home/mpl/
+USER model-server
+WORKDIR /home/model-server
+ENTRYPOINT ["/usr/local/bin/dockerd-entrypoint.sh"]
+CMD ["serve"]
