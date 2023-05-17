@@ -2,12 +2,6 @@
 
 TorchServe is a flexible and easy to use tool for serving and scaling PyTorch models in production.
 
-Requires python >= 3.8
-
-```bash
-curl http://127.0.0.1:8080/predictions/bert -T input.txt
-```
-
 ## For this fork 
 
 Custom Docker building with for [mmdetection](https://github.com/open-mmlab/mmdetection/)/[mmcv](https://github.com/open-mmlab/mmcv.git) handler 
@@ -16,6 +10,14 @@ Custom Docker building with for [mmdetection](https://github.com/open-mmlab/mmde
 - [`build_image-custom.sh`](./docker/build_image-custom.sh)
 
 - Building done on MacOS; Docker image & Docker host: Ubuntu 
+
+# Original README
+
+Requires python >= 3.8
+
+```bash
+curl http://127.0.0.1:8080/predictions/bert -T input.txt
+```
 
 ### 🚀 Quick start with TorchServe
 
